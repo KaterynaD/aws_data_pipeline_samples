@@ -1,0 +1,58 @@
+{
+  "objects": [
+    {
+      "name": "DefaultShellCommandActivity2",
+      "runsOn": {
+        "ref": "ResourceId_nrFaG"
+      },
+      "id": "ShellCommandActivityId_jtqpy",
+      "type": "ShellCommandActivity",
+      "command": "echo 'xyz'"
+    },
+    {
+      "dependsOn": [
+        {
+          "ref": "ShellCommandActivityId_HgSVc"
+        },
+        {
+          "ref": "ShellCommandActivityId_jtqpy"
+        }
+      ],
+      "name": "DefaultShellCommandActivity3",
+      "runsOn": {
+        "ref": "ResourceId_nrFaG"
+      },
+      "id": "ShellCommandActivityId_zLQ9f",
+      "type": "ShellCommandActivity",
+      "command": "echo 'zxc'"
+    },
+    {
+      "failureAndRerunMode": "CASCADE",
+      "resourceRole": "DataPipelineDefaultResourceRole",
+      "role": "DataPipelineDefaultRole",
+      "pipelineLogUri": "s3://kdalllogs/",
+      "scheduleType": "ONDEMAND",
+      "name": "Default",
+      "id": "Default"
+    },
+    {
+      "resourceRole": "DataPipelineDefaultResourceRole",
+      "role": "DataPipelineDefaultRole",
+      "instanceType": "t1.micro",
+      "name": "DefaultResource1",
+      "id": "ResourceId_nrFaG",
+      "type": "Ec2Resource",
+      "terminateAfter": "5 Minutes"
+    },
+    {
+      "name": "DefaultShellCommandActivity1",
+      "id": "ShellCommandActivityId_HgSVc",
+      "runsOn": {
+        "ref": "ResourceId_nrFaG"
+      },
+      "type": "ShellCommandActivity",
+      "command": "echo 'asd'"
+    }
+  ],
+  "parameters": []
+}

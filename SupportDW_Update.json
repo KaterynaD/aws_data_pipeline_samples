@@ -1,0 +1,392 @@
+{
+	"objects": [{
+		"database": {
+			"ref": "DatabaseId"
+		},
+		"name": "AnalystsMSSQLTable",
+		"id": "AnalystsRDSTable",
+		"type": "SqlDataNode",
+		"selectQuery": "select * from #{myAnalystsRDSTableName}",
+		"table": "#{myAnalystsRDSTableName}"
+	}, {
+		"connectionString": "#{myRedshiftJdbcConnectStr}",
+		"databaseName": "#{myRedshiftDbName}",
+		"*password": "#{*myRedshiftPassword}",
+		"name": "RedshiftDatabase",
+		"id": "RedshiftDatabaseId",
+		"type": "RedshiftDatabase",
+		"username": "#{myRedshiftUsername}"
+	}, {
+		"readThroughputPercent": "#{myReadThroughputPercent}",
+		"name": "LogsDynamoDBDataNode",
+		"id": "LogsDynamoDBDataNode",
+		"type": "DynamoDBDataNode",
+		"tableName": "#{myDynamoDBLogsTableName}"
+	}, {
+		"createTableSql": "#{myCasesCreateTableSql}",
+		"database": {
+			"ref": "RedshiftDatabaseId"
+		},
+		"name": "CasesRedshiftTable",
+		"id": "CasesRedshiftTable",
+		"type": "RedshiftDataNode",
+		"tableName": "#{myRedshiftCasesTableName}"
+	}, {
+		"name": "RMOutputS3BucketShellCommandActivity",
+		"id": "ShellCommandActivityId_9RzKN",
+		"runsOn": {
+			"ref": "Ec2"
+		},
+		"type": "ShellCommandActivity",
+		"command": "(sudo yum -y update aws-cli) && (aws s3 rm #{myOutputS3Loc} --recursive)"
+	}, {
+		"instanceType": "t1.micro",
+		"actionOnTaskFailure": "terminate",
+		"name": "Ec2",
+		"id": "Ec2",
+		"type": "Ec2Resource",
+		"terminateAfter": "10 Minutes"
+	}, {
+		"output": {
+			"ref": "CasesS3OutputLocation"
+		},
+		"input": {
+			"ref": "CasesRDSTable"
+		},
+		"dependsOn": {
+			"ref": "ShellCommandActivityId_9RzKN"
+		},
+		"name": "CasesRDStoS3CopyActivity",
+		"runsOn": {
+			"ref": "Ec2"
+		},
+		"id": "CasesRDStoS3CopyActivity",
+		"type": "CopyActivity"
+	}, {
+		"databaseName": "#{myRDSDBName}",
+		"*password": "#{*myRDSPassword}",
+		"name": "MSSQLDatabase",
+		"jdbcDriverJarUri": "#{myJARS3Loc}sqljdbc4.jar",
+		"id": "DatabaseId",
+		"type": "RdsDatabase",
+		"rdsInstanceId": "#{myRDSInstanceId}",
+		"username": "#{myRDSUsername}"
+	}, {
+		"database": {
+			"ref": "DatabaseId"
+		},
+		"name": "CasesMSSQLTable",
+		"id": "CasesRDSTable",
+		"type": "SqlDataNode",
+		"selectQuery": "select * from #{myCasesRDSTableName}",
+		"table": "#{myCasesRDSTableName}"
+	}, {
+		"createTableSql": "#{myAnalystsCreateTableSql}",
+		"database": {
+			"ref": "RedshiftDatabaseId"
+		},
+		"name": "AnalystsRedshiftTable",
+		"id": "AnalystsRedshiftDataNode",
+		"type": "RedshiftDataNode",
+		"tableName": "#{myRedshiftAnalystsTableName}"
+	}, {
+		"output": {
+			"ref": "LogsRedshiftDataNode"
+		},
+		"input": {
+			"ref": "LogsDynamoDBDataNode"
+		},
+		"name": "LogsRedshiftCopyActivity",
+		"id": "LogsRedshiftCopyActivity",
+		"runsOn": {
+			"ref": "Ec2"
+		},
+		"type": "RedshiftCopyActivity",
+		"insertMode": "TRUNCATE"
+	}, {
+		"failureAndRerunMode": "CASCADE",
+		"resourceRole": "DataPipelineDefaultResourceRole",
+		"role": "DataPipelineDefaultRole",
+		"pipelineLogUri": "s3://kdalllogs/",
+		"scheduleType": "ONDEMAND",
+		"name": "Default",
+		"id": "Default"
+	}, {
+		"database": {
+			"ref": "RedshiftDatabaseId"
+		},
+		"dependsOn": {
+			"ref": "AnalystsRedshiftCopyActivity"
+		},
+		"scriptUri": "#{mySQLScriptBucket}merge_scdt2_d_analysts.sql",
+		"name": "D_AnalystsLoadSqlActivity",
+		"runsOn": {
+			"ref": "Ec2"
+		},
+		"id": "D_AnalystsLoadSqlActivity",
+		"type": "SqlActivity"
+	}, {
+		"role": "DataPipelineDefaultRole",
+		"subject": "New Data are ready",
+		"name": "DataReadyAction",
+		"id": "F_CasesOnSuccessActionId",
+		"message": "Data are ready in Support data warehouse",
+		"type": "SnsAlarm",
+		"topicArn": "#{myETLTopic}"
+	}, {
+		"output": {
+			"ref": "AnalystsRedshiftDataNode"
+		},
+		"input": {
+			"ref": "AnalystsS3OutputLocation"
+		},
+		"name": "AnalystsRedshiftCopyActivity",
+		"id": "AnalystsRedshiftCopyActivity",
+		"precondition": {
+			"ref": "AnalystsExportedDataExistsPrecondition"
+		},
+		"runsOn": {
+			"ref": "Ec2"
+		},
+		"type": "RedshiftCopyActivity",
+		"insertMode": "TRUNCATE"
+	}, {
+		"filePath": "#{myOutputS3Loc}analysts.csv",
+		"name": "AnalystsS3OutputLocation",
+		"id": "AnalystsS3OutputLocation",
+		"type": "S3DataNode"
+	}, {
+		"database": {
+			"ref": "RedshiftDatabaseId"
+		},
+		"dependsOn": [{
+			"ref": "LogsRedshiftCopyActivity"
+		}, {
+			"ref": "D_AnalystsLoadSqlActivity"
+		}, {
+			"ref": "CasesRedshiftCopyActivity"
+		}],
+		"scriptUri": "#{mySQLScriptBucket}insert_f_cases.sql",
+		"name": "F_CasesLoad",
+		"id": "F_CasesLoad",
+		"runsOn": {
+			"ref": "Ec2"
+		},
+		"type": "SqlActivity",
+		"onSuccess": {
+			"ref": "F_CasesOnSuccessActionId"
+		}
+	}, {
+		"output": {
+			"ref": "CasesRedshiftTable"
+		},
+		"input": {
+			"ref": "CasesS3OutputLocation"
+		},
+		"dependsOn": {
+			"ref": "CasesRDStoS3CopyActivity"
+		},
+		"name": "CasesRedshiftCopyActivity",
+		"id": "CasesRedshiftCopyActivity",
+		"runsOn": {
+			"ref": "Ec2"
+		},
+		"precondition": {
+			"ref": "CasesExportedDataExistsPrecondition"
+		},
+		"type": "RedshiftCopyActivity",
+		"insertMode": "TRUNCATE"
+	}, {
+		"role": "DataPipelineDefaultRole",
+		"s3Key": "#{myOutputS3Loc}cases.csv",
+		"name": "CasesExportedDataExistsPrecondition",
+		"id": "CasesExportedDataExistsPrecondition",
+		"type": "S3KeyExists"
+	}, {
+		"filePath": "#{myOutputS3Loc}cases.csv",
+		"name": "CasesS3OutputLocation",
+		"id": "CasesS3OutputLocation",
+		"type": "S3DataNode"
+	}, {
+		"role": "DataPipelineDefaultRole",
+		"s3Key": "#{myOutputS3Loc}analysts.csv",
+		"name": "AnalystsExportedDataExistsPrecondition",
+		"id": "AnalystsExportedDataExistsPrecondition",
+		"type": "S3KeyExists"
+	}, {
+		"createTableSql": "#{myRedshiftCreateLogsTableSql}",
+		"database": {
+			"ref": "RedshiftDatabaseId"
+		},
+		"name": "LogsRedshiftTable",
+		"id": "LogsRedshiftDataNode",
+		"type": "RedshiftDataNode",
+		"tableName": "#{myRedshiftLogsTableName}"
+	}, {
+		"output": {
+			"ref": "AnalystsS3OutputLocation"
+		},
+		"input": {
+			"ref": "AnalystsRDSTable"
+		},
+		"dependsOn": {
+			"ref": "ShellCommandActivityId_9RzKN"
+		},
+		"name": "AnalystsRDStoS3CopyActivity",
+		"id": "AnalystsRDStoS3CopyActivity",
+		"runsOn": {
+			"ref": "Ec2"
+		},
+		"type": "CopyActivity"
+	}],
+	"parameters": [{
+		"description": "Redshift username",
+		"optional": "false",
+		"id": "myRedshiftUsername",
+		"type": "String"
+	}, {
+		"helpText": "The SQL statement to create Logs Redshift table if it does not already exist.",
+		"watermark": "CREATE TABLE IF NOT EXISTS #{tableName} (id varchar(255), name varchar(255), address varchar(255), primary key(id)) distkey(id) sortkey(id);",
+		"description": "Create Redshift Logs table SQL query",
+		"optional": "false",
+		"id": "myRedshiftCreateLogsTableSql",
+		"type": "String"
+	}, {
+		"description": "Redshift password",
+		"optional": "false",
+		"id": "*myRedshiftPassword",
+		"type": "String"
+	}, {
+		"helpText": "Sets the rate of read operations to keep your DynamoDB provisioned throughput rate in the allocated range for your table. The value is a double between .1 and 1.0, inclusively.",
+		"watermark": "0.5",
+		"description": "DynamoDB Table Read Throughput Percent:",
+		"optional": "false",
+		"id": "myReadThroughputPercent",
+		"type": "Double"
+	}, {
+		"helpText": "The SQL statement to create Analysts Redshift table if it does not already exist.",
+		"watermark": "CREATE TABLE IF NOT EXISTS #{tableName} (id varchar(255), name varchar(255), address varchar(255), primary key(id)) distkey(id) sortkey(id);",
+		"description": "Create Analysts staging table SQL query",
+		"id": "myAnalystsCreateTableSql",
+		"type": "String"
+	}, {
+		"watermark": "Logs",
+		"description": "DynamoDB Logs Table name",
+		"optional": "false",
+		"id": "myDynamoDBLogsTableName",
+		"type": "String"
+	}, {
+		"description": "RDS MS SQL username",
+		"optional": "false",
+		"id": "myRDSUsername",
+		"type": "String"
+	}, {
+		"helpText": "You can download the driver from this location: https://www.microsoft.com/en-us/download/details.aspx?displaylang=en&id=11774",
+		"watermark": "s3://myjdbcdriver/",
+		"description": "JDBC driver sqljdbc4.jar file location S3 folder",
+		"id": "myJARS3Loc",
+		"type": "AWS::S3::ObjectKey"
+	}, {
+		"watermark": "s3://mybucket/",
+		"description": "S3 folder with Redshift Support DW SQL scripts",
+		"optional": "false",
+		"id": "mySQLScriptBucket",
+		"type": "AWS::S3::ObjectKey"
+	}, {
+		"watermark": "arn:aws:sns:us-west-2:123456789012:ETL",
+		"helpText": "SNS Topic to send onSuccess notifications. The SQS queue, used in the pipeline, must be subscribed to this topic",
+		"description": "SNS Topic ARN to send onSuccess notifications",
+		"optional": "false",
+		"id": "myETLTopic",
+		"type": "String"
+	}, {
+		"watermark": "jdbc:postgresql://endpoint:port/database?tcpKeepAlive=true",
+		"description": "Redshift JDBC connection string",
+		"optional": "false",
+		"id": "myRedshiftJdbcConnectStr",
+		"type": "String"
+	}, {
+		"watermark": "MyDBName.dbo.MyTableName",
+		"description": "The name of Cases table",
+		"id": "myCasesRDSTableName",
+		"type": "String"
+	}, {
+		"description": "MS SQL DB password",
+		"optional": "false",
+		"id": "*myRDSPassword",
+		"type": "String"
+	}, {
+		"watermark": "cases",
+		"description": "Redshift Cases Table name",
+		"optional": "false",
+		"id": "myRedshiftCasesTableName",
+		"type": "String"
+	}, {
+		"description": "The identifier of MS SQL DB instance",
+		"optional": "false",
+		"id": "myRDSInstanceId",
+		"type": "String"
+	}, {
+		"helpText": "The SQL statement to create Cases Redshift table if it does not already exist.",
+		"watermark": "CREATE TABLE IF NOT EXISTS #{tableName} (id varchar(255), name varchar(255), address varchar(255), primary key(id)) distkey(id) sortkey(id);",
+		"description": "Create Cases staging table SQL query",
+		"id": "myCasesCreateTableSql",
+		"type": "String"
+	}, {
+		"watermark": "MyDBName.dbo.MyTableName",
+		"description": "The name of Analysts table",
+		"id": "myAnalystsRDSTableName",
+		"type": "String"
+	}, {
+		"watermark": "analysts",
+		"description": "Redshift Analysts Table name",
+		"optional": "false",
+		"id": "myRedshiftAnalystsTableName",
+		"type": "String"
+	}, {
+		"description": "MS SQL database name",
+		"optional": "false",
+		"id": "myRDSDBName",
+		"type": "String"
+	}, {
+		"description": "Redshift database name",
+		"optional": "false",
+		"id": "myRedshiftDbName",
+		"type": "String"
+	}, {
+		"watermark": "Logs",
+		"description": "Redshift Logs Table name",
+		"optional": "false",
+		"id": "myRedshiftLogsTableName",
+		"type": "String"
+	}, {
+		"watermark": "s3://mybucket/",
+		"description": "Output S3 folder",
+		"id": "myOutputS3Loc",
+		"type": "AWS::S3::ObjectKey"
+	}],
+	"values": {
+		"myETLTopic": "arn:aws:sns:us-west-2:757107622481:ETL",
+		"myRDSInstanceId": "mytest",
+		"*myRedshiftPassword": "Kaktus2015",
+		"myCasesRDSTableName": "MyTest.dbo.cases",
+		"myOutputS3Loc": "s3://kddptest/",
+		"myRDSUsername": "masteruser",
+		"myAnalystsCreateTableSql": "create table if not exists analysts(\n\taid varchar(20) not null distkey sortkey,\n\tname varchar(50) not null,\n\tteam varchar(30) not null,\n\tskills varchar(50),\n\tCreatedDate timestamp not null,\n\tUpdatedDate timestamp);",
+		"myRedshiftDbName": "supportdw",
+		"myRedshiftCasesTableName": "cases",
+		"mySQLScriptBucket": "s3://kdredshiftsql/",
+		"myRDSDBName": "MyTest",
+		"myCasesCreateTableSql": "create table if not exists cases(\n\tcid varchar(20) not null distkey sortkey,\n\tPriority integer not null,\n\tCreatedDate timestamp not null,\n\taid varchar(20),\n\tpid varchar(20));",
+		"myRedshiftUsername": "masteruser",
+		"myAnalystsRDSTableName": "MyTest.dbo.analysts",
+		"myRedshiftJdbcConnectStr": "jdbc:postgresql://support.cjp09wn9g60u.us-west-2.redshift.amazonaws.com:5439/supportdw?tcpKeepAlive=true",
+		"myRedshiftAnalystsTableName": "analysts",
+		"myJARS3Loc": "s3://kdjdbcdrivers/",
+		"myReadThroughputPercent": "0.85",
+		"myRedshiftLogsTableName": "Logs",
+		"myRedshiftCreateLogsTableSql": "create table logs(\ndt timestamp not null distkey sortkey,\ncid varchar(20) not null,\nevent  varchar(50) not null);",
+		"myDynamoDBLogsTableName": "Logs",
+		"*myRDSPassword": "Kaktus2015"
+	}
+}

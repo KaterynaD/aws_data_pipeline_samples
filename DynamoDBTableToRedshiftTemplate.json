@@ -1,0 +1,132 @@
+{
+  "objects": [
+    {
+      "output": {
+        "ref": "DataNodeId_KGlWc"
+      },
+      "input": {
+        "ref": "DataNodeId_q2Ty2"
+      },
+      "name": "RedshiftCopyActivity",
+      "id": "RedshiftCopyActivityId_qozsX",
+      "runsOn": {
+        "ref": "ResourceId_OStBN"
+      },
+      "type": "RedshiftCopyActivity",
+      "insertMode": "TRUNCATE"
+    },
+    {
+      "resourceRole": "DataPipelineDefaultResourceRole",
+      "role": "DataPipelineDefaultRole",
+      "instanceType": "t1.micro",
+      "name": "Ec2",
+      "id": "ResourceId_OStBN",
+      "type": "Ec2Resource",
+      "terminateAfter": "2 Hours"
+    },
+    {
+      "readThroughputPercent": "#{myReadThroughputPercent}",
+      "name": "DynamoDBTable",
+      "id": "DataNodeId_q2Ty2",
+      "type": "DynamoDBDataNode",
+      "tableName": "#{myDynamoDBTableName}"
+    },
+    {
+      "database": {
+        "ref": "RedshiftDatabaseId_a46gz"
+      },
+      "createTableSql": "#{myRedshiftCreateTableSql}",
+      "name": "RedshiftTable",
+      "id": "DataNodeId_KGlWc",
+      "type": "RedshiftDataNode",
+      "tableName": "#{myRedshiftTableName}"
+    },
+    {
+      "connectionString": "#{myRedshiftJdbcConnectStr}",
+      "databaseName": "#{myRedshiftDbName}",
+      "*password": "#{*myRedshiftPassword}",
+      "name": "RedshiftDatabase",
+      "id": "RedshiftDatabaseId_a46gz",
+      "type": "RedshiftDatabase",
+      "username": "#{myRedshiftUsername}"
+    },
+    {
+      "failureAndRerunMode": "CASCADE",
+      "resourceRole": "DataPipelineDefaultResourceRole",
+      "role": "DataPipelineDefaultRole",
+      "pipelineLogUri": "s3://kdalllogs/",
+      "scheduleType": "ONDEMAND",
+      "name": "Default",
+      "id": "Default"
+    }
+  ],
+  "parameters": [
+    {
+      "helpText": "The SQL statement to create Redshift table if it does not already exist.",
+      "watermark": "CREATE TABLE IF NOT EXISTS #{tableName} (id varchar(255), name varchar(255), address varchar(255), primary key(id)) distkey(id) sortkey(id);",
+      "description": "Create Redshift table SQL query",
+      "optional": "false",
+      "id": "myRedshiftCreateTableSql",
+      "type": "String"
+    },
+    {
+      "description": "Redshift username",
+      "optional": "false",
+      "id": "myRedshiftUsername",
+      "type": "String"
+    },
+    {
+      "description": "Redshift database name",
+      "optional": "false",
+      "id": "myRedshiftDbName",
+      "type": "String"
+    },
+    {
+      "watermark": "jdbc:postgresql://endpoint:port/database?tcpKeepAlive=true",
+      "description": "Redshift JDBC connection string",
+      "optional": "false",
+      "id": "myRedshiftJdbcConnectStr",
+      "type": "String"
+    },
+    {
+      "watermark": "Logs",
+      "helpText": "DynamoDB Table name",
+      "description": "DynamoDB Table name",
+      "optional": "false",
+      "id": "myDynamoDBTableName",
+      "type": "String"
+    },
+    {
+      "description": "Redshift password",
+      "optional": "false",
+      "id": "*myRedshiftPassword",
+      "type": "String"
+    },
+    {
+      "watermark": "Logs",
+      "helpText": "Redshift Table name",
+      "description": "Redshift Table name",
+      "optional": "false",
+      "id": "myRedshiftTableName",
+      "type": "String"
+    },
+    {
+      "helpText": "Sets the rate of read operations to keep your DynamoDB provisioned throughput rate in the allocated range for your table. The value is a double between .1 and 1.0, inclusively.",
+      "watermark": "0.5",
+      "description": "Read Throughput Percent:",
+      "optional": "false",
+      "id": "myReadThroughputPercent",
+      "type": "Double"
+    }
+  ],
+  "values": {
+    "myReadThroughputPercent": "0.85",
+    "myRedshiftUsername": "masteruser",
+    "myRedshiftCreateTableSql": "create table logs(\ndt timestamp not null distkey sortkey,\ncid varchar(20) not null,\nevent  varchar(50) not null);",
+    "myRedshiftDbName": "supportdw",
+    "myRedshiftJdbcConnectStr": "jdbc:postgresql://support.cjp09wn9g60u.us-west-2.redshift.amazonaws.com:5439/supportdw?tcpKeepAlive=true",
+    "*myRedshiftPassword": "Kaktus2015",
+    "myDynamoDBTableName": "Logs",
+    "myRedshiftTableName": "Logs"
+  }
+}

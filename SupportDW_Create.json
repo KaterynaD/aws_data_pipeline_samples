@@ -1,0 +1,441 @@
+{
+  "objects": [
+    {
+      "directoryPath": "#{myDataBucket}calendar",
+      "name": "CalendarDataNode",
+      "id": "CalendarDataNode",
+      "type": "S3DataNode"
+    },
+    {
+      "directoryPath": "#{myDataBucket}PrioritySLA",
+      "name": "PrioritySLADataNode",
+      "id": "PrioritySLADataNode",
+      "type": "S3DataNode"
+    },
+    {
+      "directoryPath": "#{myDataBucket}logs",
+      "name": "LogsDataNode",
+      "id": "LogsDataNode",
+      "type": "S3DataNode"
+    },
+    {
+      "database": {
+        "ref": "RedshiftDatabase"
+      },
+      "dependsOn": {
+        "ref": "ProductsRedshiftCopyActivity"
+      },
+      "scriptUri": "#{mySQLScriptBucket}create_d_products.sql",
+      "name": "D_ProductsTableActivity",
+      "runsOn": {
+        "ref": "Ec2"
+      },
+      "id": "D_ProductsTableActivity",
+      "type": "SqlActivity"
+    },
+    {
+      "directoryPath": "#{myDataBucket}products.csv",
+      "name": "ProductsData",
+      "id": "ProductsData",
+      "type": "S3DataNode"
+    },
+    {
+      "createTableSql": "#{myLogsCreateTableSql}",
+      "database": {
+        "ref": "RedshiftDatabase"
+      },
+      "name": "LogsTable",
+      "id": "LogsTable",
+      "type": "RedshiftDataNode",
+      "tableName": "logs"
+    },
+    {
+      "createTableSql": "#{myAnalystsCreateTableSql}",
+      "database": {
+        "ref": "RedshiftDatabase"
+      },
+      "name": "AnalystsTable",
+      "id": "AnalystsTable",
+      "type": "RedshiftDataNode",
+      "tableName": "analysts"
+    },
+    {
+      "failureAndRerunMode": "CASCADE",
+      "resourceRole": "DataPipelineDefaultResourceRole",
+      "role": "DataPipelineDefaultRole",
+      "pipelineLogUri": "s3://kdalllogs/",
+      "scheduleType": "ONDEMAND",
+      "name": "Default",
+      "id": "Default"
+    },
+    {
+      "directoryPath": "#{myDataBucket}cases",
+      "name": "CasesDataNode",
+      "id": "CasesDataNode",
+      "type": "S3DataNode"
+    },
+    {
+      "database": {
+        "ref": "RedshiftDatabase"
+      },
+      "scriptUri": "#{mySQLScriptBucket}build_scdt2_d_analysts.sql",
+      "dependsOn": {
+        "ref": "D_AnalystsTableActivity"
+      },
+      "name": "D_AnalystsLoadSqlActivity",
+      "runsOn": {
+        "ref": "Ec2"
+      },
+      "id": "D_AnalystsLoadSqlActivity",
+      "type": "SqlActivity"
+    },
+    {
+      "directoryPath": "#{myDataBucket}analysts",
+      "name": "AnalystsData",
+      "id": "AnalystsData",
+      "type": "S3DataNode"
+    },
+    {
+      "output": {
+        "ref": "D_CalendarDataNode"
+      },
+      "input": {
+        "ref": "CalendarDataNode"
+      },
+      "name": "D_CalendarRedshiftCopyActivity",
+      "runsOn": {
+        "ref": "Ec2"
+      },
+      "id": "D_CalendarRedshiftCopyActivity",
+      "type": "RedshiftCopyActivity",
+      "insertMode": "TRUNCATE"
+    },
+    {
+      "createTableSql": "#{myD_PrioritiesCreateTableSql}",
+      "database": {
+        "ref": "RedshiftDatabase"
+      },
+      "name": "D_PrioritiesDataNode",
+      "id": "D_PrioritiesDataNode",
+      "type": "RedshiftDataNode",
+      "tableName": "d_priorities"
+    },
+    {
+      "database": {
+        "ref": "RedshiftDatabase"
+      },
+      "dependsOn": {
+        "ref": "AnalystsRedshiftCopyActivity"
+      },
+      "scriptUri": "#{mySQLScriptBucket}create_d_analysts.sql",
+      "name": "D_AnalystsTableActivity",
+      "runsOn": {
+        "ref": "Ec2"
+      },
+      "id": "D_AnalystsTableActivity",
+      "type": "SqlActivity"
+    },
+    {
+      "createTableSql": "#{myProductsCreateTableSql}",
+      "database": {
+        "ref": "RedshiftDatabase"
+      },
+      "name": "ProductsTable",
+      "id": "ProductsTable",
+      "type": "RedshiftDataNode",
+      "tableName": "products"
+    },
+    {
+      "resourceRole": "DataPipelineDefaultResourceRole",
+      "role": "DataPipelineDefaultRole",
+      "instanceType": "t1.micro",
+      "name": "Ec2",
+      "id": "Ec2",
+      "type": "Ec2Resource",
+      "terminateAfter": "20 Minutes"
+    },
+    {
+      "output": {
+        "ref": "D_PrioritiesDataNode"
+      },
+      "input": {
+        "ref": "PrioritySLADataNode"
+      },
+      "name": "D_PrioritiesRedshiftCopyActivity",
+      "runsOn": {
+        "ref": "Ec2"
+      },
+      "id": "D_PrioritiesRedshiftCopyActivity",
+      "type": "RedshiftCopyActivity",
+	  "commandOptions": "IGNOREHEADER AS 1",
+      "insertMode": "TRUNCATE"
+    },
+    {
+      "output": {
+        "ref": "AnalystsTable"
+      },
+      "input": {
+        "ref": "AnalystsData"
+      },
+      "name": "AnalystsRedshiftCopyActivity",
+      "runsOn": {
+        "ref": "Ec2"
+      },
+      "id": "AnalystsRedshiftCopyActivity",
+      "type": "RedshiftCopyActivity",
+      "insertMode": "TRUNCATE"
+    },
+    {
+      "output": {
+        "ref": "LogsTable"
+      },
+      "input": {
+        "ref": "LogsDataNode"
+      },
+      "name": "LogsRedshiftCopyActivity",
+      "runsOn": {
+        "ref": "Ec2"
+      },
+      "id": "LogsRedshiftCopyActivity",
+      "type": "RedshiftCopyActivity",
+      "insertMode": "TRUNCATE"
+    },
+    {
+      "output": {
+        "ref": "CasesTable"
+      },
+      "input": {
+        "ref": "CasesDataNode"
+      },
+      "name": "CasesRedshiftCopyActivity",
+      "id": "CasesRedshiftCopyActivity",
+      "runsOn": {
+        "ref": "Ec2"
+      },
+      "type": "RedshiftCopyActivity",
+      "insertMode": "TRUNCATE"
+    },
+    {
+      "createTableSql": "#{myD_CalendarCreateTableSql}",
+      "database": {
+        "ref": "RedshiftDatabase"
+      },
+      "name": "D_CalendarDataNode",
+      "id": "D_CalendarDataNode",
+      "type": "RedshiftDataNode",
+      "tableName": "d_calendar"
+    },
+    {
+      "database": {
+        "ref": "RedshiftDatabase"
+      },
+      "dependsOn": {
+        "ref": "F_CasesTable"
+      },
+      "scriptUri": "#{mySQLScriptBucket}insert_f_cases.sql",
+      "name": "F_CasesLoad",
+      "runsOn": {
+        "ref": "Ec2"
+      },
+      "id": "F_CasesLoad",
+      "type": "SqlActivity",
+      "onSuccess": {
+        "ref": "F_CasesLoadOnSuccessActionId"
+      }
+    },
+    {
+      "role": "DataPipelineDefaultRole",
+      "subject": "Support DW and Data are ready",
+      "name": "DataReadyAction",
+      "id": "F_CasesLoadOnSuccessActionId",
+      "message": "Data are ready in Support data warehouse",
+      "type": "SnsAlarm",
+      "topicArn": "#{myETLTopic}"
+    },
+    {
+      "connectionString": "#{myRedshiftJdbcConnectStr}",
+      "databaseName": "#{myRedshiftDbName}",
+      "*password": "#{*myRedshiftPassword}",
+      "name": "SupportDW",
+      "id": "RedshiftDatabase",
+      "region": "us-west-2",
+      "type": "RedshiftDatabase",
+      "username": "#{myRedshiftUsername}"
+    },
+    {
+      "createTableSql": "#{myCasesCreateTableSql}",
+      "database": {
+        "ref": "RedshiftDatabase"
+      },
+      "name": "CasesTable",
+      "id": "CasesTable",
+      "type": "RedshiftDataNode",
+      "tableName": "cases"
+    },
+    {
+      "output": {
+        "ref": "ProductsTable"
+      },
+      "input": {
+        "ref": "ProductsData"
+      },
+      "name": "ProductsRedshiftCopyActivity",
+      "runsOn": {
+        "ref": "Ec2"
+      },
+      "id": "ProductsRedshiftCopyActivity",
+      "type": "RedshiftCopyActivity",
+	  "commandOptions": ["EMPTYASNULL", "IGNOREBLANKLINES"],
+      "insertMode": "TRUNCATE"
+    },
+    {
+      "database": {
+        "ref": "RedshiftDatabase"
+      },
+      "scriptUri": "#{mySQLScriptBucket}flatten_hierar_d_products.sql",
+      "dependsOn": {
+        "ref": "D_ProductsTableActivity"
+      },
+      "name": "D_ProductsLoadSqlActivity",
+      "id": "D_ProductsLoadSqlActivity",
+      "runsOn": {
+        "ref": "Ec2"
+      },
+      "type": "SqlActivity"
+    },
+    {
+      "database": {
+        "ref": "RedshiftDatabase"
+      },
+      "dependsOn": [
+        {
+          "ref": "D_AnalystsLoadSqlActivity"
+        },
+        {
+          "ref": "D_CalendarRedshiftCopyActivity"
+        },
+        {
+          "ref": "D_PrioritiesRedshiftCopyActivity"
+        },
+        {
+          "ref": "LogsRedshiftCopyActivity"
+        },
+        {
+          "ref": "D_ProductsLoadSqlActivity"
+        },
+        {
+          "ref": "CasesRedshiftCopyActivity"
+        }
+      ],
+      "scriptUri": "#{mySQLScriptBucket}create_f_cases.sql",
+      "name": "F_CasesTable",
+      "runsOn": {
+        "ref": "Ec2"
+      },
+      "id": "F_CasesTable",
+      "type": "SqlActivity"
+    }
+  ],
+  "parameters": [
+    {
+      "helpText": "The SQL statement to create Products Redshift table if it does not already exist.",
+      "watermark": "CREATE TABLE IF NOT EXISTS #{tableName} (id varchar(255), name varchar(255), address varchar(255), primary key(id)) distkey(id) sortkey(id);",
+      "description": "Create Products staging table SQL query",
+      "id": "myProductsCreateTableSql",
+      "type": "String"
+    },
+    {
+      "description": "Redshift username",
+      "id": "myRedshiftUsername",
+      "type": "String"
+    },
+    {
+      "watermark": "s3://mybucket/",
+      "description": "S3 folder with Redshift Support DW SQL scripts",
+      "optional": "false",
+      "id": "mySQLScriptBucket",
+      "type": "AWS::S3::ObjectKey"
+    },
+    {
+      "helpText": "The SQL statement to create D_Calendar Redshift table if it does not already exist.",
+      "watermark": "CREATE TABLE IF NOT EXISTS #{tableName} (id varchar(255), name varchar(255), address varchar(255), primary key(id)) distkey(id) sortkey(id);",
+      "description": "Create D_Calendar table SQL query",
+      "id": "myD_CalendarCreateTableSql",
+      "type": "String"
+    },
+    {
+      "watermark": "arn:aws:sns:us-west-2:123456789012:ETL",
+      "helpText": "SNS Topic to send onSuccess notifications. The SQS queue, used in the pipeline, must be subscribed to this topic",
+      "description": "SNS Topic ARN to send onSuccess notifications",
+      "optional": "false",
+      "id": "myETLTopic",
+      "type": "String"
+    },
+    {
+      "watermark": "s3://mybucket/",
+      "description": "S3 folder where input files are located",
+      "optional": "false",
+      "id": "myDataBucket",
+      "type": "AWS::S3::ObjectKey"
+    },
+    {
+      "description": "Redshift password",
+      "id": "*myRedshiftPassword",
+      "type": "String"
+    },
+    {
+      "description": "Redshift database name",
+      "id": "myRedshiftDbName",
+      "type": "String"
+    },
+    {
+      "helpText": "The SQL statement to create Cases Redshift table if it does not already exist.",
+      "watermark": "CREATE TABLE IF NOT EXISTS #{tableName} (id varchar(255), name varchar(255), address varchar(255), primary key(id)) distkey(id) sortkey(id);",
+      "description": "Create Cases staging table SQL query",
+      "id": "myCasesCreateTableSql",
+      "type": "String"
+    },
+    {
+      "helpText": "The SQL statement to create Logs Redshift table if it does not already exist.",
+      "watermark": "CREATE TABLE IF NOT EXISTS #{tableName} (id varchar(255), name varchar(255), address varchar(255), primary key(id)) distkey(id) sortkey(id);",
+      "description": "Create Logs staging table SQL query",
+      "id": "myLogsCreateTableSql",
+      "type": "String"
+    },
+    {
+      "helpText": "The SQL statement to create Analysts Redshift table if it does not already exist.",
+      "watermark": "CREATE TABLE IF NOT EXISTS #{tableName} (id varchar(255), name varchar(255), address varchar(255), primary key(id)) distkey(id) sortkey(id);",
+      "description": "Create Analysts staging table SQL query",
+      "id": "myAnalystsCreateTableSql",
+      "type": "String"
+    },
+    {
+      "helpText": "The SQL statement to create D_Priorities Redshift table if it does not already exist.",
+      "watermark": "CREATE TABLE IF NOT EXISTS #{tableName} (id varchar(255), name varchar(255), address varchar(255), primary key(id)) distkey(id) sortkey(id);",
+      "description": "Create D_Priorities table SQL query",
+      "id": "myD_PrioritiesCreateTableSql",
+      "type": "String"
+    },
+    {
+      "watermark": "jdbc:postgresql://endpoint:port/database?tcpKeepAlive=true",
+      "description": "Redshift JDBC connection string",
+      "id": "myRedshiftJdbcConnectStr",
+      "type": "String"
+    }
+  ],
+  "values": {
+    "myETLTopic": "arn:aws:sns:us-west-2:757107622481:ETL",
+    "myRedshiftUsername": "masteruser",
+    "myProductsCreateTableSql": "create table if not exists products(\n\tpid varchar(20) not null distkey sortkey,\n\tName varchar(100) not null,\n\tparent_pid varchar(20));",
+    "myRedshiftJdbcConnectStr": "jdbc:postgresql://support.cjp09wn9g60u.us-west-2.redshift.amazonaws.com:5439/supportdw?tcpKeepAlive=true",
+    "*myRedshiftPassword": "Kaktus2015",
+    "myD_CalendarCreateTableSql": "create table if not exists d_calendar(\n\tid integer not null sortkey,\n\tDt date not null,\n\tDayOfMonth integer not null,\n\tDayOfMonth0 char(2) not null,\n\tMM integer not null,\n\tMM0 char(2) not null,\n\tMonth varchar(20) not null,\n\tMon char(3) not null,\n\tQuarter char(2) not null,\n\tYear integer not null,\n\tDayOfWeek  integer not null,\n\tNameDayOfWeek varchar(20) not null,\n\tAbbrNameDayOfWeek char(3) not null,\n\tWeekOfYear integer not null,\n\tprimary key(id));",
+    "myDataBucket": "s3://kdsupportdata/",
+    "myAnalystsCreateTableSql": "create table if not exists analysts(\n\taid varchar(20) not null distkey sortkey,\n\tname varchar(50) not null,\n\tteam varchar(30) not null,\n\tskills varchar(50),\n\tCreatedDate timestamp not null,\n\tUpdatedDate timestamp,\n\tyear integer not null);",
+    "myRedshiftDbName": "supportdw",
+    "mySQLScriptBucket": "s3://kdredshiftsql/",
+    "myD_PrioritiesCreateTableSql": "create table if not exists d_priorities(\n\tid integer not null,\n\tname varchar(20) not null ,\n\tAssignSLA integer not null,\n\tResponseSLA integer not null,\n\tResolveSLA integer not null,\n\tprimary key(id)\n\t)\n\tdiststyle all;",
+    "myLogsCreateTableSql": "create table if not exists logs(\ndt timestamp not null distkey sortkey,\ncid varchar(20) not null,\nevent  varchar(50) not null);",
+    "myCasesCreateTableSql": "create table if not exists cases(\n\tcid varchar(20) not null distkey sortkey,\n\tPriority integer not null,\n\tCreatedDate timestamp not null,\n\taid varchar(20),\n\tpid varchar(20));"
+  }
+}

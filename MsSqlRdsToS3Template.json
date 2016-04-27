@@ -1,0 +1,113 @@
+{
+  "objects": [
+    {
+      "output": {
+        "ref": "S3OutputLocation"
+      },
+      "input": {
+        "ref": "SourceRDSTable"
+      },
+      "name": "RDStoS3CopyActivity",
+      "runsOn": {
+        "ref": "Ec2"
+      },
+      "id": "RDStoS3CopyActivity",
+      "type": "CopyActivity"
+    },
+    {
+      "instanceType": "t1.micro",
+      "name": "Ec2",
+      "actionOnTaskFailure": "terminate",
+      "id": "Ec2",
+      "type": "Ec2Resource",
+      "terminateAfter": "10 Minutes"
+    },
+    {
+      "failureAndRerunMode": "CASCADE",
+      "resourceRole": "DataPipelineDefaultResourceRole",
+      "role": "DataPipelineDefaultRole",
+      "pipelineLogUri": "s3://kdalllogs/",
+      "scheduleType": "ONDEMAND",
+      "name": "Default",
+      "id": "Default"
+    },
+    {
+      "databaseName": "#{myRDSDBName}",
+      "*password": "#{*myRDSPassword}",
+      "name": "MSSQLDatabase",
+      "jdbcDriverJarUri": "#{myJARS3Loc}sqljdbc4.jar",
+      "id": "DatabaseId_k7IGj",
+      "type": "RdsDatabase",
+      "rdsInstanceId": "#{myRDSInstanceId}",
+      "username": "#{myRDSUsername}"
+    },
+    {
+      "directoryPath": "#{myOutputS3Loc}/#{format(@scheduledStartTime, 'YYYY-MM-dd-HH-mm-ss')}",
+      "name": "S3OutputLocation",
+      "id": "S3OutputLocation",
+      "type": "S3DataNode"
+    },
+    {
+      "database": {
+        "ref": "DatabaseId_k7IGj"
+      },
+      "name": "SourceMSSQLTable",
+      "id": "SourceRDSTable",
+      "type": "SqlDataNode",
+      "selectQuery": "select * from #{myRDSTableName}",
+      "table": "#{myRDSTableName}"
+    }
+  ],
+  "parameters": [
+   {
+      "description": "The identifier of MS SQL DB instance",
+      "optional": "false",
+      "id": "myRDSInstanceId",
+      "type": "String"
+    },
+   {
+      "description": "MS SQL database name",
+      "optional": "false",
+      "id": "myRDSDBName",
+      "type": "String"
+    },
+   {
+      "description": "RDS MS SQL username",
+	  "optional": "false",
+      "id": "myRDSUsername",
+      "type": "String"
+    },
+	{
+      "description": "MS SQL DB password",
+      "optional": "false",
+      "id": "*myRDSPassword",
+      "type": "String"
+    },	
+	{ "watermark": "s3://myjdbcdriver/",
+	  "helpText": "You can download the driver from this location: https://www.microsoft.com/en-us/download/details.aspx?displaylang=en&id=11774",
+      "description": "JDBC driver sqljdbc4.jar file location S3 folder",
+      "id": "myJARS3Loc",
+      "type": "AWS::S3::ObjectKey"
+    },
+    { "watermark": "MyDBName.dbo.MyTableName",
+      "helpText": "The name of an existing table",
+      "description": "MS SQL table name",
+      "id": "myRDSTableName",
+      "type": "String"
+    },
+    { "watermark": "s3://mybucket/",
+      "description": "Output S3 folder",
+      "id": "myOutputS3Loc",
+      "type": "AWS::S3::ObjectKey"
+    }
+  ],
+  "values": {
+    "myRDSInstanceId": "mytest",
+	"myRDSDBName": "MyTest",
+    "myRDSUsername": "masteruser",
+    "*myRDSPassword": "Kaktus2015",
+	"myJARS3Loc": "s3://kdjdbcdrivers/",
+    "myOutputS3Loc": "s3://kddptest/",
+    "myRDSTableName": "MyTest.dbo.analysts"	
+  }
+}
